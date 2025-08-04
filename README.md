@@ -69,9 +69,3 @@ python main.py --config ./config/SD.conf
 ```
 
 3. If you want to train the model yourself, you can use the code at line 288 of the main file.
-
-## Acknowledgement
-We appreciate the following github repos a lot for their valuable code base or datasets:
-https://github.com/liuxu77/LargeST
-https://github.com/GestaltCogTeam/BasicTS
-https://github.com/LMissher/PatchSTG
