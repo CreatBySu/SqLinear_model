@@ -82,19 +82,14 @@ def augmentAlign(dist_matrix, auglen):
             break
     return np.array(augidx, dtype=int)
 
-def reorderData(parts_idx, mxlen, adj, sps):
-    # parts_idx: segmented indices by square partitioning
-    # no padding needed for square partition method
+def reorderData(parts_idx, mxlen, adj, capacity):
     ori_parts_idx = np.array([], dtype=int)
     reo_parts_idx = np.array([], dtype=int)
     reo_all_idx = np.array([], dtype=int)
     
     current_offset = 0
     for i, part_idx in enumerate(parts_idx):
-        # 直接使用原始分区，不进行padding
         part_size = part_idx.shape[0]
-        
-        # 重新排序的分区内索引（从current_offset开始的连续索引）
         local_reo_idx = np.arange(part_size) + current_offset
         
         reo_parts_idx = np.concatenate([reo_parts_idx, local_reo_idx])
@@ -111,7 +106,7 @@ def square_partition(points, C=8):
 
     Args:
         points: numpy array of shape (N, 2), each row is [lng, lat]
-        C: max capacity per patch
+        C: capacity per patch
 
     Returns:
         patches: list of arrays, each array contains indices of points in that patch
@@ -127,13 +122,12 @@ def square_partition(points, C=8):
         min_xy = sub_points.min(axis=0)
         max_xy = sub_points.max(axis=0)
         span = max_xy - min_xy
-        major_axis = np.argmax(span)  # 0: lng, 1: lat
+        major_axis = np.argmax(span) 
 
         sorted_idx = np.argsort(sub_points[:, major_axis])
         sorted_indices = indices[sorted_idx]
 
         N = len(sorted_indices)
-        # Find best split: choose position multiple of C closest to center
         candidates = [i for i in range(C, N, C)]
         if not candidates:
             split_idx = N // 2
@@ -150,7 +144,7 @@ def square_partition(points, C=8):
     recursive_split(all_indices)
     return patches
 
-def loadData(filepath, metapath, P, Q, train_ratio, test_ratio, adjpath, tod, dow, sps, log):
+def loadData(filepath, metapath, P, Q, train_ratio, test_ratio, adjpath, tod, dow, capacity, log):
     # Traffic
     Traffic = np.load(filepath)['data'][...,:1]
     locations = read_meta(metapath)
@@ -169,17 +163,15 @@ def loadData(filepath, metapath, P, Q, train_ratio, test_ratio, adjpath, tod, do
     trainData, trainTE = Traffic[: train_steps], TE_tile[: train_steps]
     valData, valTE = Traffic[train_steps : train_steps + val_steps], TE_tile[train_steps : train_steps + val_steps]
     testData, testTE = Traffic[-test_steps :], TE_tile[-test_steps :]
-    # load adj for padding
     if os.path.exists(adjpath):
         adj = np.load(adjpath)
     else:
         adj = construct_adj(trainData, locations.shape[1])
         np.save(adjpath, adj)
-    # partition and pad data with new indices
 
-    parts_idx = square_partition(locations.T, C=sps)
+    parts_idx = square_partition(locations.T, C=capacity)
     mxlen = max([len(part) for part in parts_idx])
-    ori_parts_idx, reo_parts_idx, reo_all_idx = reorderData(parts_idx, mxlen, adj, sps)
+    ori_parts_idx, reo_parts_idx, reo_all_idx = reorderData(parts_idx, mxlen, adj, capacity)
 
     # X, Y
     trainX, trainY = seq2instance(trainData, P, Q)

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class LinearMlp(nn.Module):
-    """Simplified MLP for linear attention block"""
+    """Simplified MLP for linear block"""
     def __init__(self, in_features, hidden_features, drop=0.1):
         super().__init__()
         self.fc1 = nn.Linear(in_features, hidden_features)
@@ -53,10 +53,10 @@ class HLI(nn.Module):
         x_inter_patch_norm = self.inter_patch_norm(x_inter_patch)
         inter_patch_out = self.inter_patch_interaction(x_inter_patch_norm)  # (B*T*N, P, D)
         
-        # Projection: [B*T*N, P, D] -> [B*T*N, D, P] -> [B*T*N, D, P] -> [B*T*N, P, D]
+        # Projection: [B*T*N, P, D] -> [B*T*N, D, P] -> [B*T*N, P, D]
         inter_patch_out_t = inter_patch_out.transpose(1, 2)  # (B*T*N, D, P)
-        inter_patch_out_proj = self.low_proj1(inter_patch_out_t)  # (B*T*N, D, P)
-        inter_patch_out_proj = self.low_proj2(inter_patch_out_proj)  # (B*T*N, D, P)
+        inter_patch_out_proj = self.low_proj1(inter_patch_out_t)  
+        inter_patch_out_proj = self.low_proj2(inter_patch_out_proj)  
         inter_patch_out = inter_patch_out_proj.transpose(1, 2)  # (B*T*N, P, D)
         
         # Reshape back: [B*T*N, P, D] -> [B, T, P, N, D]

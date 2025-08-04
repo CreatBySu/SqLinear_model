@@ -19,10 +19,6 @@ class Solver(object):
         self.__dict__.update(Solver.DEFAULTS, **config)
 
         log_string(log, '\n------------ Loading Data -------------')
-        # tod and dow means the time of the day and the day of the week
-        # ori_parts_idx indicates the original indices of input points
-        # reo_parts_idx indicates the patched indices of input points
-        # reo_all_idx indicates the patched indices of input and padded points
         self.trainX, self.trainY, self.trainXTE, self.trainYTE,\
         self.valX, self.valY, self.valXTE, self.valYTE,\
         self.testX, self.testY, self.testXTE, self.testYTE,\
@@ -103,7 +99,7 @@ class Solver(object):
             maes.append(mae)
             rmses.append(rmse)
             mapes.append(mape)
-            #log_string(log,'step %d, mae: %.4f, rmse: %.4f, mape: %.4f' % (i+1, mae, rmse, mape))
+            log_string(log,'step %d, mae: %.4f, rmse: %.4f, mape: %.4f' % (i+1, mae, rmse, mape))
         
         mae, rmse, mape = metric(pred, label)
         maes.append(mae)
@@ -170,13 +166,8 @@ class Solver(object):
                 self.best_epoch = epoch
                 min_loss = mae[-1]
                 torch.save(self.model.state_dict(), self.model_file)
-                self.test()
         
         log_string(log, f'Best epoch is: {self.best_epoch}')
-        if decay_epochs:
-            log_string(log, f'Learning rate decayed at epochs: {decay_epochs}')
-        else:
-            log_string(log, 'Learning rate did not decay during training.')
 
     def test(self):
         log_string(log, "======================TEST MODE======================")
@@ -185,8 +176,6 @@ class Solver(object):
         num_val = self.testX.shape[0]
         pred = []
         label = []
-
-        # 推理时间计算变量
         total_inference_time = 0.0
         total_samples = 0
 
@@ -202,13 +191,11 @@ class Solver(object):
                     TE = torch.from_numpy(self.testXTE[start_idx : end_idx]).to(self.device)
                     NormX = torch.from_numpy((X-self.mean)/self.std).float().to(self.device)
 
-                    # 记录推理开始时间
+                    
                     inference_start = time.time()
                     y_hat = self.model(NormX,TE)
-                    # 记录推理结束时间
                     inference_end = time.time()
                     
-                    # 累计推理时间和样本数
                     batch_inference_time = inference_end - inference_start
                     total_inference_time += batch_inference_time
                     total_samples += X.shape[0]
@@ -218,18 +205,6 @@ class Solver(object):
         
         pred = np.concatenate(pred, axis = 0)
         label = np.concatenate(label, axis = 0)
-
-        # 计算推理时间统计
-        average_inference_time = total_inference_time / num_batch
-        throughput = total_samples / total_inference_time  # 样本/秒
-        latency_per_sample = total_inference_time / total_samples * 1000  # 毫秒/样本
-
-        # log_string(log, '------------ Inference Time Statistics -------------')
-        # log_string(log, f'Total inference time: {total_inference_time:.4f} seconds')
-        # log_string(log, f'Average inference time per batch: {average_inference_time:.4f} seconds')
-        # log_string(log, f'Throughput: {throughput:.2f} samples/second')
-        # log_string(log, f'Latency per sample: {latency_per_sample:.4f} ms')
-        # log_string(log, '------------ End Statistics -------------\n')
 
         maes = []
         rmses = []
@@ -274,8 +249,8 @@ if __name__ == '__main__':
     parser.add_argument('--layers', type=int, default = config['param']['layers'])
     parser.add_argument('--tem_patchsize', type = int, default = config['param']['tps'])
     parser.add_argument('--tem_patchnum', type = int, default = config['param']['tpn'])
-    parser.add_argument('--spa_patchsize', type = int, default = config['param']['sps'])
-    parser.add_argument('--spa_patchnum', type = int, default = config['param']['spn'])
+    parser.add_argument('--spa_patchsize', type = int, default = config['param']['capacity'])
+    parser.add_argument('--spa_patchnum', type = int, default = config['param']['patchnum'])
     parser.add_argument('--node_num', type = int, default = config['param']['nodes'])
     parser.add_argument('--tod', type=int, default = config['param']['tod'])
     parser.add_argument('--dow', type=int, default = config['param']['dow'])
@@ -310,6 +285,5 @@ if __name__ == '__main__':
 
     solver = Solver(vars(args))
 
-    solver.train()
+    #solver.train()
     solver.test()
-    
